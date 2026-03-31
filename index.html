@@ -7,7 +7,7 @@
     <style>
         :root {
             --bg-color: #121212;
-            --panel-bg: rgba(30, 30, 30, 0.95); /* Leve transparência para ver o degradê */
+            --panel-bg: rgba(30, 30, 30, 0.95);
             --primary-color: #0056b3;
             --secondary-color: #007bff;
             --text-color: #e0e0e0;
@@ -24,7 +24,6 @@
             color: var(--text-color);
             margin: 0;
             padding: 20px;
-            /* Fundo dinâmico definido via JS */
             background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
             background-attachment: fixed;
             transition: background 1s ease; 
@@ -133,14 +132,21 @@
         .team-card-body { padding: 15px; }
 
         .character-row {
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 12px 0; border-bottom: 1px solid var(--border-color);
-            flex-wrap: wrap; gap: 10px;
+            display: flex; align-items: flex-start; justify-content: space-between;
+            padding: 15px 0; border-bottom: 1px solid var(--border-color);
+            flex-wrap: wrap; gap: 15px;
         }
         .character-row:last-child { border-bottom: none; }
 
-        /* Novos Badges de Atributos */
-        .attr-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+        /* Patentes / Ranks */
+        .rank-badge {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 3px 8px; border-radius: 4px; font-size: 0.85em; font-weight: bold;
+            background-color: rgba(0,0,0,0.3); border: 1px solid;
+            margin-top: 5px; margin-bottom: 5px;
+        }
+
+        .attr-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
         .attr-badges span {
             background: #2b2b2b; padding: 3px 8px; border-radius: 4px;
             font-size: 0.85em; color: #bbb; border: 1px solid #444;
@@ -148,8 +154,16 @@
         }
         .attr-badges span b { color: var(--attr-color); margin-left: 3px; font-size: 1.05em; }
 
-        .hp-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;}
-        .hp-controls input { width: 50px; text-align: center; font-weight: bold;}
+        /* Controles Direita */
+        .controls-group {
+            display: flex; flex-direction: column; gap: 10px; align-items: flex-end;
+        }
+
+        .hp-controls, .xp-controls { 
+            display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end;
+            background: rgba(0,0,0,0.2); padding: 5px 10px; border-radius: 6px;
+        }
+        .hp-controls input, .xp-controls input { width: 45px; text-align: center; font-weight: bold;}
         .btn-small { padding: 5px 10px; font-size: 0.9em; }
 
         .status-badge {
@@ -217,7 +231,7 @@
     </div>
 
     <h2>👥 Equipes envolvidas</h2>
-    <p style="font-size: 0.85em; color: #aaa; margin-top: -10px;">(Máximo de 7 equipes e 7 jogadores por equipe. HP inicial 100. Atributos de 0 a 20.)</p>
+    <p style="font-size: 0.85em; color: #aaa; margin-top: -10px;">(Máximo de 7 equipes e 7 jogadores por equipe. HP inicial 100. Atributos e XP de 0 a 100.)</p>
     
     <div id="teams-container"></div>
     
@@ -300,26 +314,21 @@
     };
 
     // ==========================================
-    // FUNÇÕES VISUAIS DINÂMICAS (Tempo e Clima)
+    // FUNÇÕES VISUAIS DINÂMICAS (Tempo, Clima e Patentes)
     // ==========================================
     function updateBackground(timeStr) {
         const [hours] = timeStr.split(':').map(Number);
         let gradient = "";
         
         if (hours >= 5 && hours < 7) {
-            // Amanhecendo
             gradient = "linear-gradient(135deg, #1c1c3c, #ff7e5f)";
         } else if (hours >= 7 && hours < 17) {
-            // Manhã / Tarde (Dia claro)
             gradient = "linear-gradient(135deg, #2980b9, #6dd5fa)";
         } else if (hours >= 17 && hours < 19) {
-            // Fim de tarde / Pôr do sol
             gradient = "linear-gradient(135deg, #ff9966, #ff5e62)";
         } else if (hours >= 19 && hours <= 23) {
-            // Noite
             gradient = "linear-gradient(135deg, #0f2027, #203a43, #2c5364)";
         } else {
-            // Madrugada
             gradient = "linear-gradient(135deg, #000000, #130f40)";
         }
         
@@ -343,14 +352,26 @@
         return `${icon} ${weather}`;
     }
 
+    function getRankInfo(xp) {
+        if (xp < 20) return { name: "Recruta", level: 1, emoji: "🔰", color: "#81c784" }; // 0-19
+        if (xp < 40) return { name: "Soldado", level: xp < 30 ? 2 : 3, emoji: "🪖", color: "#64b5f6" }; // 20-39
+        if (xp < 60) return { name: "Cabo", level: xp < 50 ? 4 : 5, emoji: "🎖️", color: "#ba68c8" }; // 40-59
+        if (xp < 80) return { name: "Sargento", level: xp < 70 ? 6 : 7, emoji: "👮", color: "#ffb74d" }; // 60-79
+        if (xp < 95) return { name: "Tenente", level: xp < 90 ? 8 : 9, emoji: "🦅", color: "#e0e0e0" }; // 80-94
+        return { name: "Capitão", level: 10, emoji: "⭐️", color: "#ffd700" }; // 95-100
+    }
+
     // ==========================================
     // LÓGICA DO JOGO E INTERFACE
     // ==========================================
-    function generateMemberHTML(id, name = "", attrs = { for: 10, agi: 10, vig: 10, int: 10, per: 10, prs: 10 }) {
+    function generateMemberHTML(id, name = "", xp = 0, attrs = { for: 10, agi: 10, vig: 10, int: 10, per: 10, prs: 10 }) {
         return `
             <div style="width: 100%; display: flex; gap: 10px; align-items: center;">
                 <span>👤</span>
                 <input type="text" placeholder="Nome do personagem" class="member-name" value="${name}" style="flex: 1;">
+                <label style="color: #aaa; font-size: 0.9em;">XP: 
+                    <input type="number" class="member-xp" value="${xp}" min="0" max="100" style="width: 50px;">
+                </label>
                 <button class="btn-small" style="background: #dc3545;" onclick="removeElement('${id}')">X</button>
             </div>
             <div class="attributes-setup" style="display: flex; gap: 10px; width: 100%; flex-wrap: wrap; margin-top: 5px; font-size: 0.85em;">
@@ -428,7 +449,8 @@
                 memberDiv.id = member.id;
                 
                 const attrs = member.attrs || { for: 10, agi: 10, vig: 10, int: 10, per: 10, prs: 10 };
-                memberDiv.innerHTML = generateMemberHTML(member.id, member.name, attrs);
+                const xp = member.xp || 0;
+                memberDiv.innerHTML = generateMemberHTML(member.id, member.name, xp, attrs);
                 
                 document.getElementById(`members_${team.id}`).appendChild(memberDiv);
             });
@@ -437,7 +459,6 @@
         if (gameState.teams.length === 0) addTeam();
 
         document.getElementById('setup-time').value = gameState.time;
-        // Se a importação for antiga e tiver emoji, removemos para casar com o select novo
         let cleanWeather = gameState.weather.replace(/[^a-zA-Z\s]/g, '').trim();
         let selectOpt = document.querySelector(`#setup-weather option[value="${cleanWeather}"]`);
         if(selectOpt) selectOpt.selected = true;
@@ -491,10 +512,10 @@
         if (el) el.remove();
     }
 
-    function getBoundedAttr(element, selector) {
+    function getBoundedValue(element, selector, max) {
         let val = parseInt(element.querySelector(selector).value);
-        if (isNaN(val)) return 10;
-        return Math.max(0, Math.min(20, val));
+        if (isNaN(val)) return 0;
+        return Math.max(0, Math.min(max, val));
     }
 
     function startGame() {
@@ -522,17 +543,18 @@
                 
                 let oldMember = oldTeam ? oldTeam.members.find(m => m.id === mId) : null;
                 let currentHp = oldMember ? oldMember.currentHp : 100;
+                let currentXp = getBoundedValue(memEl, '.member-xp', 100);
 
                 const attrs = {
-                    for: getBoundedAttr(memEl, '.attr-for'),
-                    agi: getBoundedAttr(memEl, '.attr-agi'),
-                    vig: getBoundedAttr(memEl, '.attr-vig'),
-                    int: getBoundedAttr(memEl, '.attr-int'),
-                    per: getBoundedAttr(memEl, '.attr-per'),
-                    prs: getBoundedAttr(memEl, '.attr-prs'),
+                    for: getBoundedValue(memEl, '.attr-for', 20),
+                    agi: getBoundedValue(memEl, '.attr-agi', 20),
+                    vig: getBoundedValue(memEl, '.attr-vig', 20),
+                    int: getBoundedValue(memEl, '.attr-int', 20),
+                    per: getBoundedValue(memEl, '.attr-per', 20),
+                    prs: getBoundedValue(memEl, '.attr-prs', 20),
                 };
 
-                teamObj.members.push({ id: mId, name: mName, currentHp: currentHp, attrs: attrs });
+                teamObj.members.push({ id: mId, name: mName, currentHp: currentHp, xp: currentXp, attrs: attrs });
             });
 
             if(teamObj.members.length > 0) {
@@ -580,7 +602,7 @@
 
     function getStatusInfo(current) {
         if (current <= 0) return { text: "💀 Morto", class: "status-morto" };
-        if (current < 40) return { text: "🩸 Grave. Ferido", class: "status-grave" }; 
+        if (current < 40) return { text: "🩸 Grave. ferido", class: "status-grave" }; 
         if (current < 80) return { text: "🩹 Ferido", class: "status-ferido" };
         return { text: "💚 Saudável", class: "status-saudavel" };
     }
@@ -597,7 +619,6 @@
         }
 
         teamsToRender.forEach(team => {
-            // Define a cor da equipe baseada na sua posição no array original
             const teamIndex = gameState.teams.findIndex(t => t.id === team.id);
             const teamColor = TEAM_COLORS[teamIndex % TEAM_COLORS.length];
 
@@ -612,11 +633,18 @@
             team.members.forEach(member => {
                 const status = getStatusInfo(member.currentHp);
                 const attrs = member.attrs || { for: 10, agi: 10, vig: 10, int: 10, per: 10, prs: 10 };
+                const xp = member.xp || 0;
+                const rank = getRankInfo(xp);
 
                 teamHTML += `
                     <div class="character-row">
                         <div style="display: flex; flex-direction: column; flex: 1; min-width: 250px;">
-                            <strong style="font-size: 1.1em; ${member.currentHp <= 0 ? 'text-decoration: line-through; color: #888;' : ''}">👤 ${member.name}</strong>
+                            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                                <strong style="font-size: 1.1em; ${member.currentHp <= 0 ? 'text-decoration: line-through; color: #888;' : ''}">👤 ${member.name}</strong>
+                                <span class="rank-badge" style="color: ${rank.color}; border-color: ${rank.color};">
+                                    ${rank.emoji} ${rank.name} (Nv. ${rank.level})
+                                </span>
+                            </div>
                             <div class="attr-badges">
                                 <span>FOR <b>${attrs.for}</b></span>
                                 <span>AGI <b>${attrs.agi}</b></span>
@@ -626,14 +654,23 @@
                                 <span>PRS <b>${attrs.prs}</b></span>
                             </div>
                         </div>
-                        <div class="hp-controls">
-                            <span class="status-badge ${status.class}">${status.text}</span>
-                            <button class="btn-small" onclick="adjustHp('${team.id}', '${member.id}', -1)">-</button>
-                            <input type="number" value="${member.currentHp}" 
-                                   onchange="setHp('${team.id}', '${member.id}', this.value)" 
-                                   min="0" max="100">
-                            <span style="color: #aaa; font-size: 0.9em;">HP</span>
-                            <button class="btn-small" onclick="adjustHp('${team.id}', '${member.id}', 1)">+</button>
+                        
+                        <div class="controls-group">
+                            <div class="hp-controls">
+                                <span class="status-badge ${status.class}">${status.text}</span>
+                                <button class="btn-small" onclick="adjustHp('${team.id}', '${member.id}', -1)">-</button>
+                                <input type="number" value="${member.currentHp}" onchange="setHp('${team.id}', '${member.id}', this.value)" min="0" max="100">
+                                <span style="color: #aaa; font-size: 0.9em; width: 20px;">HP</span>
+                                <button class="btn-small" onclick="adjustHp('${team.id}', '${member.id}', 1)">+</button>
+                            </div>
+                            
+                            <div class="xp-controls">
+                                <span style="color: #aaa; font-size: 0.85em; margin-right: 5px;">Experiência:</span>
+                                <button class="btn-small" style="background: #17a2b8;" onclick="adjustXp('${team.id}', '${member.id}', -1)">-</button>
+                                <input type="number" value="${xp}" onchange="setXp('${team.id}', '${member.id}', this.value)" min="0" max="100">
+                                <span style="color: #aaa; font-size: 0.9em; width: 20px;">XP</span>
+                                <button class="btn-small" style="background: #17a2b8;" onclick="adjustXp('${team.id}', '${member.id}', 1)">+</button>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -653,13 +690,25 @@
     function setHp(teamId, memberId, value) {
         const team = gameState.teams.find(t => t.id === teamId);
         const member = team.members.find(m => m.id === memberId);
-        
         let newHp = parseInt(value);
         if (isNaN(newHp)) newHp = 0;
-        if (newHp > 100) newHp = 100;
-        if (newHp < 0) newHp = 0;
+        member.currentHp = Math.max(0, Math.min(100, newHp));
+        renderGameTeams(); 
+    }
 
-        member.currentHp = newHp;
+    function adjustXp(teamId, memberId, amount) {
+        const team = gameState.teams.find(t => t.id === teamId);
+        const member = team.members.find(m => m.id === memberId);
+        let currentXp = member.xp || 0;
+        setXp(teamId, memberId, currentXp + amount);
+    }
+
+    function setXp(teamId, memberId, value) {
+        const team = gameState.teams.find(t => t.id === teamId);
+        const member = team.members.find(m => m.id === memberId);
+        let newXp = parseInt(value);
+        if (isNaN(newXp)) newXp = 0;
+        member.xp = Math.max(0, Math.min(100, newXp));
         renderGameTeams(); 
     }
 

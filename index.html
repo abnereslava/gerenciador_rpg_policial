@@ -184,8 +184,8 @@
         }
         .modal-content {
             background-color: var(--panel-bg); padding: 25px;
-            border-radius: 8px; width: 450px; border: 1px solid var(--border-color);
-            max-height: 80vh; overflow-y: auto;
+            border-radius: 8px; width: 500px; border: 1px solid var(--border-color);
+            max-height: 85vh; overflow-y: auto;
         }
         .checkbox-group { display: flex; flex-direction: column; gap: 10px; margin: 20px 0; }
         .checkbox-group label {
@@ -198,6 +198,14 @@
         #btn-start:hover { background-color: #218838; }
         
         .empty-state { text-align: center; color: #888; font-style: italic; padding: 20px; background: rgba(26,26,26,0.8); border-radius: 6px; }
+
+        /* Histórico de Ações */
+        .log-entry {
+            background: #242424; border-left: 4px solid var(--primary-color);
+            padding: 10px 15px; margin-bottom: 10px; border-radius: 4px;
+        }
+        .log-meta { font-size: 0.8em; color: #aaa; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 5px; }
+        .log-text { font-size: 0.95em; white-space: pre-wrap; }
     </style>
 </head>
 <body>
@@ -231,7 +239,7 @@
     </div>
 
     <h2>👥 Equipes envolvidas</h2>
-    <p style="font-size: 0.85em; color: #aaa; margin-top: -10px;">(Máximo de 7 equipes e 7 jogadores por equipe. HP inicial 100. Atributos e XP de 0 a 100.)</p>
+    <p style="font-size: 0.85em; color: #aaa; margin-top: -10px;">(Máximo de 7 equipes e 7 jogadores por equipe. HP inicial 100. Atributos de 1 a 20 e XP de 0 a 100.)</p>
     
     <div id="teams-container"></div>
     
@@ -241,10 +249,11 @@
 </div>
 
 <div id="screen-game" class="container" style="display: none;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
         <h1>🚔 Gerenciador tático</h1>
-        <div style="display: flex; gap: 10px;">
-            <button onclick="pauseGame()" style="background-color: #ffc107; color: black;">⚙️ Pausar e editar equipes</button>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button onclick="openLogViewerModal()" style="background-color: #17a2b8;">📖 Histórico do GM</button>
+            <button onclick="pauseGame()" style="background-color: #ffc107; color: black;">⚙️ Pausar e editar</button>
             <button onclick="openExportModal()" style="background-color: #dc3545;">Finalizar e salvar 💾</button>
         </div>
     </div>
@@ -274,11 +283,38 @@
 <div id="modal-turn" class="modal-overlay">
     <div class="modal-content">
         <h2 id="modal-title">Quem participa deste turno?</h2>
-        <p style="font-size: 0.9em; color: #aaa;">DICA: Selecione todas as equipes envolvidas na cena agora (ex: atirador e alvo), para que você consiga visualizar e alterar a vida de todos eles na tela principal.</p>
+        <p style="font-size: 0.9em; color: #aaa;">DICA: Selecione todas as equipes envolvidas na cena agora (ex: atirador e alvo).</p>
         <div class="checkbox-group" id="modal-team-checkboxes"></div>
         <div style="display: flex; justify-content: flex-end; gap: 10px;">
             <button style="background: #555;" onclick="closeTurnModal()">Cancelar</button>
-            <button onclick="confirmTurn()">Confirmar ação</button>
+            <button onclick="proceedToLogEntry()">Avançar</button>
+        </div>
+    </div>
+</div>
+
+<div id="modal-log-entry" class="modal-overlay">
+    <div class="modal-content">
+        <h2>✍️ Registro do turno (GM)</h2>
+        <p style="font-size: 0.9em; color: #aaa;">Descreva brevemente o que aconteceu neste turno envolvendo as equipes selecionadas.</p>
+        <textarea id="turn-log-text" rows="5" placeholder="Ex: O Sargento atirou no suspeito que estava fugindo pela janela..."></textarea>
+        <div style="display: flex; justify-content: space-between; margin-top: 15px;">
+            <button style="background: #dc3545;" onclick="submitTurnLog(true)">Pular</button>
+            <button style="background: #28a745;" onclick="submitTurnLog(false)">Registrar</button>
+        </div>
+    </div>
+</div>
+
+<div id="modal-view-logs" class="modal-overlay">
+    <div class="modal-content" style="width: 600px;">
+        <h2>📖 Diário da Sessão</h2>
+        <div id="logs-container" style="max-height: 400px; overflow-y: auto; margin-bottom: 15px;">
+            </div>
+        <div style="display: flex; justify-content: space-between; gap: 10px; border-top: 1px solid #444; padding-top: 15px;">
+            <button style="background: #dc3545; padding: 8px;" onclick="clearLogs()">Limpar Histórico</button>
+            <div style="display: flex; gap: 10px;">
+                <button style="background: #17a2b8; padding: 8px;" onclick="downloadLogs()">Baixar Relatório (.txt)</button>
+                <button style="background: #555; padding: 8px;" onclick="closeLogViewerModal()">Fechar</button>
+            </div>
         </div>
     </div>
 </div>
@@ -291,6 +327,18 @@
         <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
             <button onclick="copyExport()" style="background-color: #28a745; font-size: 1.1em;">📋 Copiar código</button>
             <button onclick="closeExportModal()" style="background: #555;">Voltar ao jogo</button>
+        </div>
+    </div>
+</div>
+
+<div id="modal-transfer" class="modal-overlay">
+    <div class="modal-content">
+        <h2>🔄 Transferir Personagem</h2>
+        <p style="font-size: 0.9em; color: #aaa;">Selecione para qual equipe este personagem deve ser movido:</p>
+        <select id="transfer-team-select" style="width: 100%; margin: 15px 0; padding: 10px;"></select>
+        <div style="display: flex; justify-content: flex-end; gap: 10px;">
+            <button style="background: #555;" onclick="closeTransferModal()">Cancelar</button>
+            <button onclick="confirmTransfer()" style="background-color: #ff9800; color: black;">Mover Personagem</button>
         </div>
     </div>
 </div>
@@ -310,8 +358,12 @@
         round: 1,
         teams: [], 
         pendingTeamIds: [], 
-        currentTurnTeams: [] 
+        currentTurnTeams: [],
+        logs: [] // Array para guardar os históricos
     };
+
+    let memberToTransfer = null;
+    let tempSelectedTeams = []; // Guarda os times selecionados no modal de turno antes de ir pro log
 
     // ==========================================
     // FUNÇÕES VISUAIS DINÂMICAS (Tempo, Clima e Patentes)
@@ -378,17 +430,82 @@
         if (totalEl) {
             totalEl.innerText = `Total: ${total}/60`;
             if (total === 60) {
-                totalEl.style.color = '#28a745'; // Verde
+                totalEl.style.color = '#28a745'; 
             } else if (total < 60) {
-                totalEl.style.color = '#ffc107'; // Amarelo
+                totalEl.style.color = '#ffc107'; 
             } else {
-                totalEl.style.color = '#dc3545'; // Vermelho
+                totalEl.style.color = '#dc3545'; 
             }
         }
     }
 
     // ==========================================
-    // LÓGICA DO JOGO E INTERFACE
+    // LÓGICA DE HISTÓRICO DE AÇÕES (LOG)
+    // ==========================================
+    function openLogViewerModal() {
+        const container = document.getElementById('logs-container');
+        container.innerHTML = '';
+        
+        if (!gameState.logs || gameState.logs.length === 0) {
+            container.innerHTML = `<div class="empty-state">Nenhum registro encontrado nesta sessão.</div>`;
+        } else {
+            // Renderiza de trás pra frente (mais recente primeiro)
+            [...gameState.logs].reverse().forEach(log => {
+                container.innerHTML += `
+                    <div class="log-entry">
+                        <div class="log-meta">
+                            📅 ${log.realDate} | 🕒 Jogo: ${log.gameTime} | 🛡️ Equipes: ${log.teamsInvolved}
+                        </div>
+                        <div class="log-text">${log.description}</div>
+                    </div>
+                `;
+            });
+        }
+        document.getElementById('modal-view-logs').style.display = 'flex';
+    }
+
+    function closeLogViewerModal() {
+        document.getElementById('modal-view-logs').style.display = 'none';
+    }
+
+    function clearLogs() {
+        if(confirm("Tem certeza que deseja limpar todo o histórico? Isso não afeta as vidas ou times, apenas os textos.")) {
+            gameState.logs = [];
+            openLogViewerModal(); // Atualiza a tela
+        }
+    }
+
+    function downloadLogs() {
+        if (!gameState.logs || gameState.logs.length === 0) {
+            return alert("Não há registros para baixar.");
+        }
+        
+        let textContent = "DIÁRIO DE SESSÃO - RPG POLICIAL\n===============================\n\n";
+        
+        gameState.logs.forEach(log => {
+            textContent += `Data: ${log.realDate}\n`;
+            textContent += `Horário no Jogo: ${log.gameTime}\n`;
+            textContent += `Equipes Envolvidas: ${log.teamsInvolved}\n`;
+            textContent += `Acontecimento: \n${log.description}\n`;
+            textContent += `-------------------------------\n\n`;
+        });
+        
+        const blob = new Blob([textContent], { type: "text/plain;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        
+        // Nome do arquivo baseado na data de hoje
+        const dateString = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
+        a.download = `Sessao_RPG_${dateString}.txt`;
+        
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+
+    // ==========================================
+    // LÓGICA DO JOGO, TRANSFERÊNCIA E INTERFACE
     // ==========================================
     function generateMemberHTML(id, name = "", xp = 0, attrs = { for: 10, agi: 10, vig: 10, int: 10, per: 10, prs: 10 }) {
         const total = attrs.for + attrs.agi + attrs.vig + attrs.int + attrs.per + attrs.prs;
@@ -401,7 +518,8 @@
                 <label style="color: #aaa; font-size: 0.9em;">XP: 
                     <input type="number" class="member-xp" value="${xp}" min="0" max="100" style="width: 50px;">
                 </label>
-                <button class="btn-small" style="background: #dc3545;" onclick="removeElement('${id}')">X</button>
+                <button class="btn-small" style="background: #ff9800; color: black;" onclick="openTransferModal('${id}')" title="Transferir para outra equipe">🔄 Transferir</button>
+                <button class="btn-small" style="background: #dc3545;" onclick="removeElement('${id}')" title="Excluir personagem">X</button>
             </div>
             <div class="attributes-setup" style="display: flex; gap: 10px; width: 100%; flex-wrap: wrap; margin-top: 5px; font-size: 0.85em; align-items: center;">
                 <label>FOR <input type="number" class="attr-for" value="${attrs.for}" min="0" max="20" style="width: 40px; padding: 4px;" oninput="updateAttrTotal('${id}')"></label>
@@ -415,6 +533,51 @@
         `;
     }
 
+    function openTransferModal(memberId) {
+        memberToTransfer = memberId;
+        const currentTeamId = document.getElementById(memberId).closest('.team-setup').id;
+        const select = document.getElementById('transfer-team-select');
+        select.innerHTML = '';
+        
+        const teams = document.querySelectorAll('.team-setup');
+        let optionsCount = 0;
+
+        teams.forEach(t => {
+            if (t.id !== currentTeamId) {
+                const teamName = t.querySelector('.team-name').value || 'Equipe sem nome';
+                select.innerHTML += `<option value="${t.id}">${teamName}</option>`;
+                optionsCount++;
+            }
+        });
+
+        if (optionsCount === 0) {
+            return alert("Você precisa criar pelo menos mais uma equipe para poder transferir alguém.");
+        }
+
+        document.getElementById('modal-transfer').style.display = 'flex';
+    }
+
+    function closeTransferModal() {
+        document.getElementById('modal-transfer').style.display = 'none';
+        memberToTransfer = null;
+    }
+
+    function confirmTransfer() {
+        const targetTeamId = document.getElementById('transfer-team-select').value;
+        if (!targetTeamId || !memberToTransfer) return;
+
+        const targetContainer = document.getElementById(`members_${targetTeamId}`);
+        
+        if (targetContainer.querySelectorAll('.member-setup').length >= MAX_MEMBERS) {
+            return alert(`A equipe de destino já atingiu o limite de ${MAX_MEMBERS} personagens.`);
+        }
+
+        const memberEl = document.getElementById(memberToTransfer);
+        targetContainer.appendChild(memberEl); 
+        
+        closeTransferModal();
+    }
+
     function importGame() {
         const dataStr = document.getElementById('import-data').value.trim();
         if (!dataStr) return alert("Por favor, cole o código do jogo salvo antes de carregar.");
@@ -424,6 +587,7 @@
             if (parsedData.teams && typeof parsedData.round === 'number') {
                 gameState = parsedData;
                 if (!gameState.currentTurnTeams) gameState.currentTurnTeams = gameState.teams.map(t => t.id);
+                if (!gameState.logs) gameState.logs = []; // Garante compatibilidade com saves que não tinham log
 
                 updateBackground(gameState.time);
                 document.getElementById('screen-setup').style.display = 'none';
@@ -450,7 +614,7 @@
         const textarea = document.getElementById('export-textarea');
         textarea.select();
         document.execCommand('copy');
-        alert("Código copiado! Guarde-o para a próxima aula.");
+        alert("Código copiado! Guarde-o para a próxima aula.\n\nDica: Se o código estiver ficando muito grande, limpe o Histórico do GM antes de salvar!");
     }
 
     function pauseGame() {
@@ -764,6 +928,7 @@
         updateBackground(gameState.time);
     }
 
+    // Modal Fase 1: Selecionar Times
     function openTurnModal() {
         const modal = document.getElementById('modal-turn');
         const checkboxesContainer = document.getElementById('modal-team-checkboxes');
@@ -795,20 +960,61 @@
 
     function closeTurnModal() { document.getElementById('modal-turn').style.display = 'none'; }
 
-    function confirmTurn() {
+    // Modal Fase 2: Registrar História
+    function proceedToLogEntry() {
         const checkboxes = document.querySelectorAll('.team-turn-check:checked');
         if (checkboxes.length === 0) return alert("Selecione pelo menos uma equipe para colocar na tela!");
 
-        gameState.currentTurnTeams = [];
+        tempSelectedTeams = [];
+        checkboxes.forEach(cb => tempSelectedTeams.push(cb.value));
 
-        checkboxes.forEach(cb => {
-            const tId = cb.value;
-            gameState.currentTurnTeams.push(tId);
+        closeTurnModal();
+        
+        // Limpa o textarea para a nova entrada
+        document.getElementById('turn-log-text').value = '';
+        document.getElementById('modal-log-entry').style.display = 'flex';
+    }
+
+    function submitTurnLog(skip) {
+        const textElement = document.getElementById('turn-log-text');
+        const logText = textElement.value.trim();
+
+        if (!skip && logText === "") {
+            return alert("Erro: O registro não pode estar em branco. Digite o que aconteceu ou clique em 'Pular'.");
+        }
+
+        if (!skip) {
+            // Pegar os nomes das equipes selecionadas
+            const teamNames = tempSelectedTeams.map(id => {
+                const t = gameState.teams.find(team => team.id === id);
+                return t ? t.name : '';
+            }).join(', ');
+
+            // Criar data/hora real formatada
+            const realDateStr = new Date().toLocaleString('pt-BR');
+
+            // Salvar no array (antes de avançar o tempo do jogo)
+            if(!gameState.logs) gameState.logs = [];
+            gameState.logs.push({
+                realDate: realDateStr,
+                gameTime: gameState.time,
+                teamsInvolved: teamNames,
+                description: logText
+            });
+        }
+
+        // Fecha modal
+        document.getElementById('modal-log-entry').style.display = 'none';
+
+        // Efetiva a troca de turno visualmente e avança o tempo
+        gameState.currentTurnTeams = [...tempSelectedTeams];
+        
+        tempSelectedTeams.forEach(tId => {
             gameState.pendingTeamIds = gameState.pendingTeamIds.filter(id => id !== tId);
         });
 
+        tempSelectedTeams = [];
         advanceTime(10);
-        closeTurnModal();
         updateGameHeader();
         renderGameTeams();
     }

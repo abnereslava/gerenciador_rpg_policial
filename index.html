@@ -353,18 +353,47 @@
     }
 
     function getRankInfo(xp) {
-        if (xp < 20) return { name: "Recruta", level: 1, emoji: "🔰", color: "#81c784" }; // 0-19
-        if (xp < 40) return { name: "Soldado", level: xp < 30 ? 2 : 3, emoji: "🪖", color: "#64b5f6" }; // 20-39
-        if (xp < 60) return { name: "Cabo", level: xp < 50 ? 4 : 5, emoji: "🎖️", color: "#ba68c8" }; // 40-59
-        if (xp < 80) return { name: "Sargento", level: xp < 70 ? 6 : 7, emoji: "👮", color: "#ffb74d" }; // 60-79
-        if (xp < 95) return { name: "Tenente", level: xp < 90 ? 8 : 9, emoji: "🦅", color: "#e0e0e0" }; // 80-94
-        return { name: "Capitão", level: 10, emoji: "⭐️", color: "#ffd700" }; // 95-100
+        if (xp < 20) return { name: "Recruta", level: 1, emoji: "🔰", color: "#81c784" }; 
+        if (xp < 40) return { name: "Soldado", level: xp < 30 ? 2 : 3, emoji: "🪖", color: "#64b5f6" }; 
+        if (xp < 60) return { name: "Cabo", level: xp < 50 ? 4 : 5, emoji: "🎖️", color: "#ba68c8" }; 
+        if (xp < 80) return { name: "Sargento", level: xp < 70 ? 6 : 7, emoji: "👮", color: "#ffb74d" }; 
+        if (xp < 95) return { name: "Tenente", level: xp < 90 ? 8 : 9, emoji: "🦅", color: "#e0e0e0" }; 
+        return { name: "Capitão", level: 10, emoji: "⭐️", color: "#ffd700" }; 
+    }
+
+    function updateAttrTotal(memberId) {
+        const memberDiv = document.getElementById(memberId);
+        if (!memberDiv) return;
+        
+        const forVal = parseInt(memberDiv.querySelector('.attr-for').value) || 0;
+        const agiVal = parseInt(memberDiv.querySelector('.attr-agi').value) || 0;
+        const vigVal = parseInt(memberDiv.querySelector('.attr-vig').value) || 0;
+        const intVal = parseInt(memberDiv.querySelector('.attr-int').value) || 0;
+        const perVal = parseInt(memberDiv.querySelector('.attr-per').value) || 0;
+        const prsVal = parseInt(memberDiv.querySelector('.attr-prs').value) || 0;
+        
+        const total = forVal + agiVal + vigVal + intVal + perVal + prsVal;
+        const totalEl = document.getElementById(`total_${memberId}`);
+        
+        if (totalEl) {
+            totalEl.innerText = `Total: ${total}/60`;
+            if (total === 60) {
+                totalEl.style.color = '#28a745'; // Verde
+            } else if (total < 60) {
+                totalEl.style.color = '#ffc107'; // Amarelo
+            } else {
+                totalEl.style.color = '#dc3545'; // Vermelho
+            }
+        }
     }
 
     // ==========================================
     // LÓGICA DO JOGO E INTERFACE
     // ==========================================
     function generateMemberHTML(id, name = "", xp = 0, attrs = { for: 10, agi: 10, vig: 10, int: 10, per: 10, prs: 10 }) {
+        const total = attrs.for + attrs.agi + attrs.vig + attrs.int + attrs.per + attrs.prs;
+        let totalColor = total === 60 ? '#28a745' : (total < 60 ? '#ffc107' : '#dc3545');
+
         return `
             <div style="width: 100%; display: flex; gap: 10px; align-items: center;">
                 <span>👤</span>
@@ -374,13 +403,14 @@
                 </label>
                 <button class="btn-small" style="background: #dc3545;" onclick="removeElement('${id}')">X</button>
             </div>
-            <div class="attributes-setup" style="display: flex; gap: 10px; width: 100%; flex-wrap: wrap; margin-top: 5px; font-size: 0.85em;">
-                <label>FOR <input type="number" class="attr-for" value="${attrs.for}" min="0" max="20" style="width: 40px; padding: 4px;"></label>
-                <label>AGI <input type="number" class="attr-agi" value="${attrs.agi}" min="0" max="20" style="width: 40px; padding: 4px;"></label>
-                <label>VIG <input type="number" class="attr-vig" value="${attrs.vig}" min="0" max="20" style="width: 40px; padding: 4px;"></label>
-                <label>INT <input type="number" class="attr-int" value="${attrs.int}" min="0" max="20" style="width: 40px; padding: 4px;"></label>
-                <label>PER <input type="number" class="attr-per" value="${attrs.per}" min="0" max="20" style="width: 40px; padding: 4px;"></label>
-                <label>PRS <input type="number" class="attr-prs" value="${attrs.prs}" min="0" max="20" style="width: 40px; padding: 4px;"></label>
+            <div class="attributes-setup" style="display: flex; gap: 10px; width: 100%; flex-wrap: wrap; margin-top: 5px; font-size: 0.85em; align-items: center;">
+                <label>FOR <input type="number" class="attr-for" value="${attrs.for}" min="0" max="20" style="width: 40px; padding: 4px;" oninput="updateAttrTotal('${id}')"></label>
+                <label>AGI <input type="number" class="attr-agi" value="${attrs.agi}" min="0" max="20" style="width: 40px; padding: 4px;" oninput="updateAttrTotal('${id}')"></label>
+                <label>VIG <input type="number" class="attr-vig" value="${attrs.vig}" min="0" max="20" style="width: 40px; padding: 4px;" oninput="updateAttrTotal('${id}')"></label>
+                <label>INT <input type="number" class="attr-int" value="${attrs.int}" min="0" max="20" style="width: 40px; padding: 4px;" oninput="updateAttrTotal('${id}')"></label>
+                <label>PER <input type="number" class="attr-per" value="${attrs.per}" min="0" max="20" style="width: 40px; padding: 4px;" oninput="updateAttrTotal('${id}')"></label>
+                <label>PRS <input type="number" class="attr-prs" value="${attrs.prs}" min="0" max="20" style="width: 40px; padding: 4px;" oninput="updateAttrTotal('${id}')"></label>
+                <div style="margin-left: auto; font-weight: bold; color: ${totalColor}; padding: 0 10px; background: rgba(0,0,0,0.3); border-radius: 4px;" id="total_${id}">Total: ${total}/60</div>
             </div>
         `;
     }
